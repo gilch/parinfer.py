@@ -103,11 +103,12 @@ ERROR_UNCLOSED_QUOTE = "unclosed-quote"
 ERROR_UNCLOSED_PAREN = "unclosed-paren"
 ERROR_UNHANDLED = "unhandled"
 
-errorMessages = {}
-errorMessages[ERROR_QUOTE_DANGER] = "Quotes must balanced inside comment blocks."
-errorMessages[ERROR_EOL_BACKSLASH] = "Line cannot end in a hanging backslash."
-errorMessages[ERROR_UNCLOSED_QUOTE] = "String is missing a closing quote."
-errorMessages[ERROR_UNCLOSED_PAREN] = "Unmatched open-paren."
+errorMessages = {
+    ERROR_QUOTE_DANGER : "Quotes must balanced inside comment blocks.",
+    ERROR_EOL_BACKSLASH : "Line cannot end in a hanging backslash.",
+    ERROR_UNCLOSED_QUOTE : "String is missing a closing quote.",
+    ERROR_UNCLOSED_PAREN : "Unmatched open-paren.",
+}
 
 def cacheErrorPos(result, name, lineNo, x):
     result['errorPosCache'][name] = {'lineNo': lineNo, 'x': x}
@@ -143,18 +144,12 @@ def removeWithinString(orig, start, end):
     return orig[:start] + orig[end:]
 
 def repeatString(text, n):
-    result = ""
-    for i in range(n):
-        result = result + text
-    return result
+    return text * n
 
 # NOTE: We assume that if the CR char "\r" is used anywhere, we should use CRLF
 #       line-endings after every line.
 def getLineEnding(text):
-    i = text.find("\r")
-    if i != -1:
-        return "\r\n"
-    return "\n"
+    return "\r\n" if "\r" in text else "\n"
 
 #-------------------------------------------------------------------------------
 # Line Operations
@@ -199,10 +194,7 @@ def clamp(valN, minN, maxN):
     return valN
 
 def peek(arr):
-    arrLen = len(arr)
-    if arrLen == 0:
-        return None
-    return arr[arrLen - 1]
+    return arr[-1] if arr else None
 
 #-------------------------------------------------------------------------------
 # Character Functions

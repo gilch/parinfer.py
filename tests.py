@@ -3,7 +3,11 @@
 ##       it could use some work to be more robust
 
 import json
-import unittest2
+from sys import version_info
+if version_info < (2, 7):
+    import unittest2 as unittest
+else:
+    import unittest
 from parinfer import indent_mode, paren_mode
 
 # load test files
@@ -22,7 +26,7 @@ oppositeModeFn = {
   'paren': indent_mode
 }
 
-class TestParinfer(unittest2.TestCase):
+class TestParinfer(unittest.TestCase):
 
     def run_test(self, test, mode):
         test_id = test['in']['fileLineNo']
@@ -79,4 +83,4 @@ class TestParinfer(unittest2.TestCase):
                                                      {'lineNo': 1, 'line': ' bar)'}])
 
 if __name__ == "__main__":
-    unittest2.main()
+    unittest.main()
