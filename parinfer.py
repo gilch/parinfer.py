@@ -44,25 +44,25 @@ PARENS = {
 # String Operations
 # -------------------------------------------------------------------------------
 
-def insertWithinString(orig, idx, insert):
+def insert_within_string(orig, idx, insert):
     return orig[:idx] + insert + orig[idx:]
 
 
-def replaceWithinString(orig, start, end, replace):
+def replace_within_string(orig, start, end, replace):
     return orig[:start] + replace + orig[end:]
 
 
-def removeWithinString(orig, start, end):
+def remove_within_string(orig, start, end):
     return orig[:start] + orig[end:]
 
 
-def repeatString(text, n):
+def repeat_string(text, n):
     return text * n
 
 
 # NOTE: We assume that if the CR char "\r" is used anywhere, we should use CRLF
 #       line-endings after every line.
-def getLineEnding(text):
+def get_line_ending(text):
     return "\r\n" if "\r" in text else "\n"
 
 
@@ -92,12 +92,12 @@ class ParinferError(Exception):
 # Misc Utils
 # -------------------------------------------------------------------------------
 
-def clamp(valN, minN, maxN):
-    if minN is not None:
-        valN = max(minN, valN)
-    if maxN is not None:
-        valN = min(maxN, valN)
-    return valN
+def clamp(val_n, min_n, max_n):
+    if min_n is not None:
+        val_n = max(min_n, val_n)
+    if max_n is not None:
+        val_n = min(max_n, val_n)
+    return val_n
 
 
 def peek(arr):
@@ -108,22 +108,22 @@ def peek(arr):
 # Character Functions
 # -------------------------------------------------------------------------------
 
-def isValidCloseParen(parenStack, ch):
-    if len(parenStack) == 0:
+def is_valid_close_paren(paren_stack, ch):
+    if len(paren_stack) == 0:
         return False
-    return peek(parenStack)['ch'] == PARENS[ch]
+    return peek(paren_stack)['ch'] == PARENS[ch]
 
 
-def processText(text, options, mode):
+def process_text(text, options, mode):
     result = Result(text, options, mode)
 
     try:
         for line in result.origLines:
-            result.processLine(line)
-        result.finalizeResult()
+            result.process_line(line)
+        result.finalize_result()
     except ParinferError as e:
-        errorDetails = e.args[0]
-        result.processError(errorDetails)
+        error_details = e.args[0]
+        result.process_error(error_details)
 
     return result
 
@@ -179,12 +179,12 @@ class Result(object):
             if 'cursorX' in options:
                 self.cursorX = options['cursorX']
 
-    def cacheErrorPos(self, name, lineNo, x):
-        self.errorPosCache[name] = {'lineNo': lineNo, 'x': x}
+    def cache_error_pos(self, name, line_no, x):
+        self.errorPosCache[name] = {'lineNo': line_no, 'x': x}
 
-    def new_error(self, name, lineNo, x):
-        if lineNo is None:
-            lineNo = self.errorPosCache[name]['lineNo']
+    def new_error(self, name, line_no, x):
+        if line_no is None:
+            line_no = self.errorPosCache[name]['lineNo']
         if x is None:
             x = self.errorPosCache[name]['x']
 
@@ -192,7 +192,7 @@ class Result(object):
             'parinferError': True,
             'name': name,
             'message': errorMessages[name],
-            'lineNo': lineNo,
+            'lineNo': line_no,
             'x': x,
         }
 
@@ -200,34 +200,34 @@ class Result(object):
     # Line Operations
     # -------------------------------------------------------------------------------
 
-    def insertWithinLine(self, lineNo, idx, insert):
-        line = self.lines[lineNo]
-        self.lines[lineNo] = insertWithinString(line, idx, insert)
+    def insert_within_line(self, line_no, idx, insert):
+        line = self.lines[line_no]
+        self.lines[line_no] = insert_within_string(line, idx, insert)
 
-    def replaceWithinLine(self, lineNo, start, end, replace):
-        line = self.lines[lineNo]
-        self.lines[lineNo] = replaceWithinString(line, start, end, replace)
+    def replace_within_line(self, line_no, start, end, replace):
+        line = self.lines[line_no]
+        self.lines[line_no] = replace_within_string(line, start, end, replace)
 
-    def removeWithinLine(self, lineNo, start, end):
-        line = self.lines[lineNo]
-        self.lines[lineNo] = removeWithinString(line, start, end)
+    def remove_within_line(self, line_no, start, end):
+        line = self.lines[line_no]
+        self.lines[line_no] = remove_within_string(line, start, end)
 
-    def initLine(self, line):
+    def init_line(self, line):
         self.x = 0
-        self.lineNo = self.lineNo + 1
+        self.lineNo += 1
         self.lines.append(line)
 
         # reset line-specific state
         self.commentX = None
         self.indentDelta = 0
 
-    def commitChar(self, origCh):
+    def commit_char(self, orig_ch):
         ch = self.ch
-        if origCh != ch:
-            self.replaceWithinLine(self.lineNo, self.x, self.x + len(origCh), ch)
-        self.x = self.x + len(ch)
+        if orig_ch != ch:
+            self.replace_within_line(self.lineNo, self.x, self.x + len(orig_ch), ch)
+        self.x += len(ch)
 
-    def onOpenParen(self):
+    def on_open_paren(self):
         if self.isInCode:
             self.parenStack.append({
                 'lineNo': self.lineNo,
@@ -236,84 +236,84 @@ class Result(object):
                 'indentDelta': self.indentDelta,
             })
 
-    def onMatchedCloseParen(self):
+    def on_matched_close_paren(self):
         opener = peek(self.parenStack)
         self.parenTrail['endX'] = self.x + 1
         self.parenTrail['openers'].append(opener)
         self.maxIndent = opener['x']
         self.parenStack.pop()
 
-    def onUnmatchedCloseParen(self):
+    def on_unmatched_close_paren(self):
         self.ch = ''
 
-    def onCloseParen(self):
+    def on_close_paren(self):
         if self.isInCode:
-            if isValidCloseParen(self.parenStack, self.ch):
-                self.onMatchedCloseParen()
+            if is_valid_close_paren(self.parenStack, self.ch):
+                self.on_matched_close_paren()
             else:
-                self.onUnmatchedCloseParen()
+                self.on_unmatched_close_paren()
 
-    def onTab(self):
+    def on_tab(self):
         if self.isInCode:
             self.ch = DOUBLE_SPACE
 
-    def onSemicolon(self):
+    def on_semicolon(self):
         if self.isInCode:
             self.isInComment = True
             self.commentX = self.x
 
-    def onNewLine(self):
+    def on_new_line(self):
         self.isInComment = False
         self.ch = ''
 
-    def onQuote(self):
+    def on_quote(self):
         if self.isInStr:
             self.isInStr = False
         elif self.isInComment:
             self.quoteDanger = not self.quoteDanger
             if self.quoteDanger:
-                self.cacheErrorPos(ERROR_QUOTE_DANGER, self.lineNo, self.x)
+                self.cache_error_pos(ERROR_QUOTE_DANGER, self.lineNo, self.x)
         else:
             self.isInStr = True
-            self.cacheErrorPos(ERROR_UNCLOSED_QUOTE, self.lineNo, self.x)
+            self.cache_error_pos(ERROR_UNCLOSED_QUOTE, self.lineNo, self.x)
 
-    def onBackslash(self):
+    def on_backslash(self):
         self.isEscaping = True
 
-    def afterBackslash(self):
+    def after_backslash(self):
         self.isEscaping = False
 
         if self.ch == NEWLINE:
             if self.isInCode:
                 err = self.new_error(ERROR_EOL_BACKSLASH, self.lineNo, self.x - 1)
                 raise ParinferError(err)
-            self.onNewLine()
+            self.on_new_line()
 
     CHAR_DISPATCH = {
-        '(': onOpenParen,
-        '{': onOpenParen,
-        '[': onOpenParen,
+        '(': on_open_paren,
+        '{': on_open_paren,
+        '[': on_open_paren,
 
-        ')': onCloseParen,
-        '}': onCloseParen,
-        ']': onCloseParen,
+        ')': on_close_paren,
+        '}': on_close_paren,
+        ']': on_close_paren,
 
-        DOUBLE_QUOTE: onQuote,
-        SEMICOLON: onSemicolon,
-        BACKSLASH: onBackslash,
-        TAB: onTab,
-        NEWLINE: onNewLine,
+        DOUBLE_QUOTE: on_quote,
+        SEMICOLON: on_semicolon,
+        BACKSLASH: on_backslash,
+        TAB: on_tab,
+        NEWLINE: on_new_line,
     }
 
-    def onChar(self):
+    def on_char(self):
         ch = self.ch
 
         if self.isEscaping:
-            self.afterBackslash()
+            self.after_backslash()
         else:
-            charFn = self.CHAR_DISPATCH.get(ch, None)
-            if charFn is not None:
-                charFn(self)
+            char_fn = self.CHAR_DISPATCH.get(ch, None)
+            if char_fn is not None:
+                char_fn(self)
 
         self.isInCode = (not self.isInComment and not self.isInStr)
 
@@ -321,160 +321,160 @@ class Result(object):
     # Cursor Functions
     # -------------------------------------------------------------------------------
 
-    def isCursorOnLeft(self):
+    def is_cursor_on_left(self):
         return (self.lineNo == self.cursorLine and
                 self.cursorX is not None and
                 self.cursorX <= self.x)
 
-    def isCursorOnRight(self, x):
+    def is_cursor_on_right(self, x):
         return (self.lineNo == self.cursorLine and
                 self.cursorX is not None and
                 x is not None and
                 self.cursorX > x)
 
-    def isCursorInComment(self):
-        return self.isCursorOnRight(self.commentX)
+    def is_cursor_in_comment(self):
+        return self.is_cursor_on_right(self.commentX)
 
-    def handleCursorDelta(self):
-        hasCursorDelta = (self.cursorDx is not None and
+    def handle_cursor_delta(self):
+        has_cursor_delta = (self.cursorDx is not None and
                           self.cursorLine == self.lineNo and
                           self.cursorX == self.x)
 
-        if hasCursorDelta:
+        if has_cursor_delta:
             self.indentDelta = self.indentDelta + self.cursorDx
 
     # -------------------------------------------------------------------------------
     # Paren Trail Functions
     # -------------------------------------------------------------------------------
 
-    def updateParenTrailBounds(self):
+    def update_paren_trail_bounds(self):
         line = self.lines[self.lineNo]
-        prevCh = None
+        prev_ch = None
         if self.x > 0:
-            prevCh = line[self.x - 1]
+            prev_ch = line[self.x - 1]
         ch = self.ch
 
-        shouldReset = (self.isInCode and
+        should_reset = (self.isInCode and
                        ch != "" and
                        ch not in CLOSE_PARENS and
-                       (ch != BLANK_SPACE or prevCh == BACKSLASH) and
+                       (ch != BLANK_SPACE or prev_ch == BACKSLASH) and
                        ch != DOUBLE_SPACE)
 
-        if shouldReset:
+        if should_reset:
             self.parenTrail['lineNo'] = self.lineNo
             self.parenTrail['startX'] = self.x + 1
             self.parenTrail['endX'] = self.x + 1
             self.parenTrail['openers'] = []
             self.maxIndent = None
 
-    def clampParenTrailToCursor(self):
-        startX = self.parenTrail['startX']
-        endX = self.parenTrail['endX']
+    def clamp_paren_trail_to_cursor(self):
+        start_x = self.parenTrail['startX']
+        end_x = self.parenTrail['endX']
 
-        isCursorClamping = (self.isCursorOnRight(startX) and
-                            not self.isCursorInComment())
+        is_cursor_clamping = (self.is_cursor_on_right(start_x) and
+                            not self.is_cursor_in_comment())
 
-        if isCursorClamping:
-            newStartX = max(startX, self.cursorX)
-            newEndX = max(endX, self.cursorX)
+        if is_cursor_clamping:
+            new_start_x = max(start_x, self.cursorX)
+            new_end_x = max(end_x, self.cursorX)
 
             line = self.lines[self.lineNo]
-            removeCount = 0
-            for i in range(startX, newStartX):
+            remove_count = 0
+            for i in range(start_x, new_start_x):
                 if line[i] in CLOSE_PARENS:
-                    removeCount = removeCount + 1
+                    remove_count += 1
 
-            for i in range(removeCount):
+            for i in range(remove_count):
                 self.parenTrail['openers'].pop(0)
-            self.parenTrail['startX'] = newStartX
-            self.parenTrail['endX'] = newEndX
+            self.parenTrail['startX'] = new_start_x
+            self.parenTrail['endX'] = new_end_x
 
-    def removeParenTrail(self):
-        startX = self.parenTrail['startX']
-        endX = self.parenTrail['endX']
+    def remove_paren_trail(self):
+        start_x = self.parenTrail['startX']
+        end_x = self.parenTrail['endX']
 
-        if startX == endX:
+        if start_x == end_x:
             return
 
         openers = self.parenTrail['openers']
         while len(openers) != 0:
             self.parenStack.append(openers.pop())
 
-        self.removeWithinLine(self.lineNo, startX, endX)
+        self.remove_within_line(self.lineNo, start_x, end_x)
 
-    def correctParenTrail(self, indentX):
+    def correct_paren_trail(self, indent_x):
         parens = ""
 
         while len(self.parenStack) > 0:
             opener = peek(self.parenStack)
-            if opener['x'] >= indentX:
+            if opener['x'] >= indent_x:
                 self.parenStack.pop()
-                parens = parens + PARENS[opener['ch']]
+                parens += PARENS[opener['ch']]
             else:
                 break
 
-        self.insertWithinLine(self.parenTrail['lineNo'], self.parenTrail['startX'], parens)
+        self.insert_within_line(self.parenTrail['lineNo'], self.parenTrail['startX'], parens)
 
-    def cleanParenTrail(self):
-        startX = self.parenTrail['startX']
-        endX = self.parenTrail['endX']
+    def clean_paren_trail(self):
+        start_x = self.parenTrail['startX']
+        end_x = self.parenTrail['endX']
 
-        if (startX == endX or self.lineNo != self.parenTrail['lineNo']):
+        if start_x == end_x or self.lineNo != self.parenTrail['lineNo']:
             return
 
         line = self.lines[self.lineNo]
-        newTrail = ""
-        spaceCount = 0
-        for i in range(startX, endX):
+        new_trail = ""
+        space_count = 0
+        for i in range(start_x, end_x):
             if line[i] in CLOSE_PARENS:
-                newTrail = newTrail + line[i]
+                new_trail = new_trail + line[i]
             else:
-                spaceCount = spaceCount + 1
+                space_count += 1
 
-        if spaceCount > 0:
-            self.replaceWithinLine(self.lineNo, startX, endX, newTrail)
-            self.parenTrail['endX'] = self.parenTrail['endX'] - spaceCount
+        if space_count > 0:
+            self.replace_within_line(self.lineNo, start_x, end_x, new_trail)
+            self.parenTrail['endX'] = self.parenTrail['endX'] - space_count
 
-    def appendParenTrail(self):
+    def append_paren_trail(self):
         opener = self.parenStack.pop()
-        closeCh = PARENS[opener['ch']]
+        close_ch = PARENS[opener['ch']]
 
         self.maxIndent = opener['x']
-        self.insertWithinLine(self.parenTrail['lineNo'], self.parenTrail['endX'], closeCh)
-        self.parenTrail['endX'] = self.parenTrail['endX'] + 1
+        self.insert_within_line(self.parenTrail['lineNo'], self.parenTrail['endX'], close_ch)
+        self.parenTrail['endX'] += 1
 
-    def finishNewParenTrail(self):
+    def finish_new_paren_trail(self):
         if self.mode == INDENT_MODE:
-            self.clampParenTrailToCursor()
-            self.removeParenTrail()
+            self.clamp_paren_trail_to_cursor()
+            self.remove_paren_trail()
         elif self.mode == PAREN_MODE:
             if self.lineNo != self.cursorLine:
-                self.cleanParenTrail()
+                self.clean_paren_trail()
 
     # -------------------------------------------------------------------------------
     # Indentation functions
     # -------------------------------------------------------------------------------
 
-    def correctIndent(self):
-        origIndent = self.x
-        newIndent = origIndent
-        minIndent = 0
-        maxIndent = self.maxIndent
+    def correct_indent(self):
+        orig_indent = self.x
+        new_indent = orig_indent
+        min_indent = 0
+        max_indent = self.maxIndent
 
         opener = peek(self.parenStack)
         if opener is not None:
-            minIndent = opener['x'] + 1
-            newIndent = newIndent + opener['indentDelta']
+            min_indent = opener['x'] + 1
+            new_indent = new_indent + opener['indentDelta']
 
-        newIndent = clamp(newIndent, minIndent, maxIndent)
+        new_indent = clamp(new_indent, min_indent, max_indent)
 
-        if newIndent != origIndent:
-            indentStr = repeatString(BLANK_SPACE, newIndent)
-            self.replaceWithinLine(self.lineNo, 0, origIndent, indentStr)
-            self.x = newIndent
-            self.indentDelta = self.indentDelta + newIndent - origIndent
+        if new_indent != orig_indent:
+            indent_str = repeat_string(BLANK_SPACE, new_indent)
+            self.replace_within_line(self.lineNo, 0, orig_indent, indent_str)
+            self.x = new_indent
+            self.indentDelta = self.indentDelta + new_indent - orig_indent
 
-    def onProperIndent(self):
+    def on_proper_indent(self):
         self.trackingIndent = False
 
         if self.quoteDanger:
@@ -482,57 +482,57 @@ class Result(object):
             raise ParinferError(err)
 
         if self.mode == INDENT_MODE:
-            self.correctParenTrail(self.x)
+            self.correct_paren_trail(self.x)
         elif self.mode == PAREN_MODE:
-            self.correctIndent()
+            self.correct_indent()
 
-    def onLeadingCloseParen(self):
+    def on_leading_close_paren(self):
         self.skipChar = True
         self.trackingIndent = True
 
         if self.mode == PAREN_MODE:
-            if isValidCloseParen(self.parenStack, self.ch):
-                if self.isCursorOnLeft():
+            if is_valid_close_paren(self.parenStack, self.ch):
+                if self.is_cursor_on_left():
                     self.skipChar = False
-                    self.onProperIndent()
+                    self.on_proper_indent()
                 else:
-                    self.appendParenTrail()
+                    self.append_paren_trail()
 
-    def onIndent(self):
+    def on_indent(self):
         if self.ch in CLOSE_PARENS:
-            self.onLeadingCloseParen()
+            self.on_leading_close_paren()
         elif self.ch == SEMICOLON:
             # comments don't count as indentation points
             self.trackingIndent = False
         elif self.ch != NEWLINE:
-            self.onProperIndent()
+            self.on_proper_indent()
 
     # -------------------------------------------------------------------------------
     # High-level processing functions
     # -------------------------------------------------------------------------------
 
-    def processChar(self, ch):
-        origCh = ch
+    def process_char(self, ch):
+        orig_ch = ch
 
         self.ch = ch
         self.skipChar = False
 
         if self.mode == PAREN_MODE:
-            self.handleCursorDelta()
+            self.handle_cursor_delta()
 
         if self.trackingIndent and ch != BLANK_SPACE and ch != TAB:
-            self.onIndent()
+            self.on_indent()
 
         if self.skipChar:
             self.ch = ""
         else:
-            self.onChar()
-            self.updateParenTrailBounds()
+            self.on_char()
+            self.update_paren_trail_bounds()
 
-        self.commitChar(origCh)
+        self.commit_char(orig_ch)
 
-    def processLine(self, line):
-        self.initLine(line)
+    def process_line(self, line):
+        self.init_line(line)
 
         if self.mode == INDENT_MODE:
             self.trackingIndent = (len(self.parenStack) != 0 and
@@ -542,12 +542,12 @@ class Result(object):
 
         chars = line + NEWLINE
         for c in chars:
-            self.processChar(c)
+            self.process_char(c)
 
         if self.lineNo == self.parenTrail['lineNo']:
-            self.finishNewParenTrail()
+            self.finish_new_paren_trail()
 
-    def finalizeResult(self):
+    def finalize_result(self):
         if self.quoteDanger:
             err = self.new_error(ERROR_QUOTE_DANGER, None, None)
             raise ParinferError(err)
@@ -562,11 +562,11 @@ class Result(object):
                 err = self.new_error(ERROR_UNCLOSED_PAREN, opener['lineNo'], opener['x'])
                 raise ParinferError(err)
             elif self.mode == INDENT_MODE:
-                self.correctParenTrail(0)
+                self.correct_paren_trail(0)
 
         self.success = True
 
-    def processError(self, e):
+    def process_error(self, e):
         self.success = False
         if e['parinferError']:
             del e['parinferError']
@@ -579,17 +579,17 @@ class Result(object):
     # Public API Helpers
     # -------------------------------------------------------------------------------
 
-    def getChangedLines(self):
-        changedLines = []
+    def get_changed_lines(self):
+        changed_lines = []
         for i in range(len(self.lines)):
             if self.lines[i] != self.origLines[i]:
-                changedLines.append({
+                changed_lines.append({
                     'lineNo': i,
                     'line': self.lines[i],
                 })
-        return changedLines
+        return changed_lines
 
-    def publicResult(self):
+    def public_result(self):
         if not self.success:
             return {
                 'text': self.origText,
@@ -597,11 +597,11 @@ class Result(object):
                 'error': self.error,
             }
 
-        lineEnding = getLineEnding(self.origText)
+        line_ending = get_line_ending(self.origText)
         return {
-            'text': lineEnding.join(self.lines),
+            'text': line_ending.join(self.lines),
             'success': True,
-            'changedLines': self.getChangedLines(),
+            'changedLines': self.get_changed_lines(),
         }
 
 
@@ -610,10 +610,10 @@ class Result(object):
 # -------------------------------------------------------------------------------
 
 def indent_mode(text, options):
-    result = processText(text, options, INDENT_MODE)
-    return result.publicResult()
+    result = process_text(text, options, INDENT_MODE)
+    return result.public_result()
 
 
 def paren_mode(text, options):
-    result = processText(text, options, PAREN_MODE)
-    return result.publicResult()
+    result = process_text(text, options, PAREN_MODE)
+    return result.public_result()
